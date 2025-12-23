@@ -48,6 +48,9 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[project.scripts]
+turbodiffusion-serve = "turbodiffusion.serve:main"
+
 [project.urls]
 Homepage = "https://github.com/thu-ml/TurboDiffusion"
 Repository = "https://github.com/thu-ml/TurboDiffusion"

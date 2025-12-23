@@ -42,7 +42,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--vae_path", type=str, default="checkpoints/Wan2.1_VAE.pth", help="Path to the Wan2.1 VAE")
     parser.add_argument("--text_encoder_path", type=str, default="checkpoints/models_t5_umt5-xxl-enc-bf16.pth", help="Path to the umT5 text encoder")
     parser.add_argument("--num_frames", type=int, default=81, help="Number of frames to generate")
-    parser.add_argument("--prompt", type=str, required=True, help="Text prompt for video generation")
+    parser.add_argument("--prompt", type=str, default=None, help="Text prompt for video generation (required unless --serve)")
     parser.add_argument("--resolution", default="480p", type=str, help="Resolution of the generated output")
     parser.add_argument("--aspect_ratio", default="16:9", type=str, help="Aspect ratio of the generated output (width:height)")
     parser.add_argument("--seed", type=int, default=0, help="Random seed for reproducibility")
@@ -51,11 +51,23 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--sla_topk", type=float, default=0.1, help="Top-k ratio for SLA/SageSLA attention")
     parser.add_argument("--quant_linear", action="store_true", help="Whether to replace Linear layers with quantized versions")
     parser.add_argument("--default_norm", action="store_true", help="Whether to replace LayerNorm/RMSNorm layers with faster versions")
+    parser.add_argument("--serve", action="store_true", help="Launch interactive TUI server mode (keeps model loaded)")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_arguments()
+
+    # Handle serve mode
+    if args.serve:
+        from turbodiffusion.serve import main as serve_main
+        serve_main(args)
+        exit(0)
+
+    # Validate prompt is provided for one-shot mode
+    if args.prompt is None:
+        log.error("--prompt is required (unless using --serve mode)")
+        exit(1)
 
     log.info(f"Computing embedding for prompt: {args.prompt}")
     with torch.no_grad():
