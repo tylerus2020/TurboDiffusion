@@ -132,7 +132,12 @@ class SageSparseLinearAttention(nn.Module):
             tie_feature_map_qk: whether to use the same feature map for query and key.
             timestep_adaptive_topk: whether to adaptively adjust topk during diffusion.
         '''
-        assert SAGESLA_ENABLED, "Install SpargeAttn first to enable SageSLA."
+        assert SAGESLA_ENABLED, (
+            "SageSLA requires SpargeAttn library which is not installed.\n"
+            "Options:\n"
+            "  1. Install SpargeAttn: pip install git+https://github.com/thu-ml/SpargeAttn.git --no-build-isolation\n"
+            "  2. Use SLA instead: --attention_type sla (no extra dependencies, slightly slower)"
+        )
 
         super().__init__()
         self.dtype = torch.bfloat16 if use_bf16 else torch.float16

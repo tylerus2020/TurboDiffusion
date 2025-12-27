@@ -55,7 +55,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--ode", action="store_true", help="Use ODE for sampling (sharper but less robust than SDE)")
     parser.add_argument("--seed", type=int, default=0, help="Random seed for reproducibility")
     parser.add_argument("--save_path", type=str, default="output/generated_video.mp4", help="Path to save the generated video (include file extension)")
-    parser.add_argument("--attention_type", choices=["sla", "sagesla", "original"], default="sagesla", help="Type of attention mechanism to use")
+    parser.add_argument("--attention_type", choices=["sla", "sagesla", "original"], default="sla", help="Type of attention mechanism to use (default: sla, no extra dependencies)")
     parser.add_argument("--sla_topk", type=float, default=0.1, help="Top-k ratio for SLA/SageSLA attention")
     parser.add_argument("--quant_linear", action="store_true", help="Whether to replace Linear layers with quantized versions")
     parser.add_argument("--default_norm", action="store_true", help="Whether to replace LayerNorm/RMSNorm layers with faster versions")
