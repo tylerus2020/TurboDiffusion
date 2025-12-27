@@ -135,10 +135,19 @@ def create_model(dit_path: str, args: argparse.Namespace) -> torch.nn.Module:
     if args.attention_type in ['sla', 'sagesla']:
         net = replace_attention(net, attention_type=args.attention_type, sla_topk=args.sla_topk)
     replace_linear_norm(net, replace_linear=args.quant_linear, replace_norm=not args.default_norm, quantize=False)
-    net.load_state_dict(state_dict, assign=True)
+    
+    # Use strict=False for better checkpoint compatibility
+    # This allows loading checkpoints with mismatched keys (e.g., SLA vs original)
+    missing_keys, unexpected_keys = net.load_state_dict(state_dict, assign=True, strict=False)
+    if unexpected_keys:
+        print(f"Warning: Ignored {len(unexpected_keys)} unexpected keys in checkpoint")
+    if missing_keys:
+        print(f"Warning: {len(missing_keys)} keys missing in checkpoint")
+    
     net = net.to(tensor_kwargs["device"]).eval()
     del state_dict
     return net
+
 
 
 def parse_arguments() -> argparse.Namespace:
