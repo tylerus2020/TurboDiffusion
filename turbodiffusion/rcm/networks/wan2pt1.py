@@ -23,11 +23,67 @@ import torch.amp as amp
 import torch.nn as nn
 from einops import rearrange, repeat
 
+
+# ============================================
+# Pure PyTorch RoPE fallback implementation
+# Added: 2025-12-27 for RunPod compatibility
+# ============================================
+def apply_rotary_emb_torch(x, cos, sin, interleaved=True, inplace=False):
+    """
+    Pure PyTorch implementation of Rotary Position Embedding.
+    Compatible with flash_attn's apply_rotary_emb interface.
+    
+    Args:
+        x: Input tensor of shape [B, L, H, D]
+        cos: Cosine values for rotation [L, D/2]
+        sin: Sine values for rotation [L, D/2]
+        interleaved: If True, use interleaved rotation (flash_attn style)
+        inplace: Ignored, kept for API compatibility
+    
+    Returns:
+        Rotated tensor of same shape as input
+    """
+    batch, seq_len, n_heads, head_dim = x.shape
+    
+    if interleaved:
+        # Interleaved format: pairs of dimensions are rotated together
+        x_reshaped = x.reshape(batch, seq_len, n_heads, head_dim // 2, 2)
+        x1 = x_reshaped[..., 0]
+        x2 = x_reshaped[..., 1]
+        
+        # Reshape cos/sin for broadcasting: [L, D/2] -> [L, 1, D/2]
+        cos = cos.view(seq_len, 1, head_dim // 2)
+        sin = sin.view(seq_len, 1, head_dim // 2)
+        
+        # Apply rotation: [cos, -sin; sin, cos] @ [x1, x2]
+        o1 = x1 * cos - x2 * sin
+        o2 = x1 * sin + x2 * cos
+        
+        # Interleave back to original format
+        output = torch.stack([o1, o2], dim=-1).reshape(batch, seq_len, n_heads, head_dim)
+    else:
+        # Non-interleaved: first half and second half of dimensions
+        d = head_dim // 2
+        x1 = x[..., :d]
+        x2 = x[..., d:]
+        
+        cos = cos.view(seq_len, 1, d)
+        sin = sin.view(seq_len, 1, d)
+        
+        o1 = x1 * cos - x2 * sin
+        o2 = x1 * sin + x2 * cos
+        output = torch.cat([o1, o2], dim=-1)
+    
+    return output
+
+
+# Import flash_attn or use fallback
 try:
     from flash_attn.layers.rotary import apply_rotary_emb as flash_apply_rotary_emb
 except ImportError:
-    flash_apply_rotary_emb = None
-    print("flash_attn is not installed.")
+    flash_apply_rotary_emb = apply_rotary_emb_torch
+    print("Warning: flash_attn not found, using pure PyTorch RoPE fallback. Performance may be reduced.")
+
 
 from torch.distributed import ProcessGroup, get_process_group_ranks
 from torch.distributed._composable.fsdp import fully_shard
