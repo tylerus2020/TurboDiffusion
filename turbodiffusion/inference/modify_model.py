@@ -30,7 +30,7 @@ from rcm.networks.wan2pt2 import (
     WanSelfAttention as WanSelfAttention2pt2
 )
 
-from ops import FastLayerNorm, FastRMSNorm, Int8Linear
+from ops import FastLayerNorm, FastRMSNorm, Int8Linear, CUDA_OPS_AVAILABLE
 from SLA import (
     SparseLinearAttention as SLA,
     SageSparseLinearAttention as SageSLA
@@ -60,9 +60,16 @@ def replace_linear_norm(
     quantize: bool = True,
     skip_layer: str = "proj_l"
 ) -> torch.nn.Module:
+    # Check if CUDA ops are available for INT8 quantization
+    if replace_linear and not CUDA_OPS_AVAILABLE:
+        print("Warning: --quant_linear requested but turbo_diffusion_ops not available.")
+        print("Falling back to standard Linear layers (no quantization).")
+        replace_linear = False
+    
     replacements = {}
     for name, module in model.blocks.named_modules():
         if isinstance(module, torch.nn.Linear) and replace_linear:
+
             if skip_layer not in name:
                 replacements[name] = Int8Linear.from_linear(module, quantize)
         

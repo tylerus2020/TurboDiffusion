@@ -6,7 +6,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 import triton
 import triton.language as tl
-from turbo_diffusion_ops import quant_cuda, gemm_cuda
+
+# Try to import custom CUDA ops, fallback to None if not available
+try:
+    from turbo_diffusion_ops import quant_cuda, gemm_cuda
+    CUDA_OPS_AVAILABLE = True
+except ImportError:
+    quant_cuda = None
+    gemm_cuda = None
+    CUDA_OPS_AVAILABLE = False
+    print("Warning: turbo_diffusion_ops not found. INT8 quantization will not be available.")
+    print("To enable: pip install -e . --no-build-isolation (requires CUDA toolkit)")
 
 
 def int8_quant(x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:

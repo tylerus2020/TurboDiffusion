@@ -18,10 +18,16 @@ from enum import Enum
 
 import torch
 
+# Handle different PyTorch versions
 try:
     from torch.utils.checkpoint import CheckpointPolicy, create_selective_checkpoint_contexts, noop_context_fn
+    SELECTIVE_CHECKPOINT_AVAILABLE = True
 except ImportError:
     CheckpointPolicy = None
+    create_selective_checkpoint_contexts = None
+    noop_context_fn = lambda: (None, None)
+    SELECTIVE_CHECKPOINT_AVAILABLE = False
+    print("Warning: Selective checkpoint not available in this PyTorch version. Using fallback.")
 
 mm_only_save_list = {
     torch.ops.aten.mm.default,
@@ -56,7 +62,12 @@ def mm_only_policy(ctx, func, *args, **kwargs):
 
 
 def mm_only_context_fn():
-    return create_selective_checkpoint_contexts(mm_only_policy)
+    if SELECTIVE_CHECKPOINT_AVAILABLE:
+        return create_selective_checkpoint_contexts(mm_only_policy)
+    else:
+        # Fallback for older PyTorch versions
+        from contextlib import nullcontext
+        return nullcontext(), nullcontext()
 
 
 @dataclass
