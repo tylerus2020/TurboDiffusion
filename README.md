@@ -193,6 +193,51 @@ For GPUs with more than 40GB of GPU memory, **e.g., H100, please use the unquant
 Interactive inference via the terminal is available at `turbodiffusion/serve/`. This allows multi-turn video generation without reloading the model.
 
 
+## RunPod / Container Deployment
+
+For deployment on RunPod or similar containerized environments with limited disk space:
+
+### Quick Start (No Compilation Required)
+
+```bash
+# Clone and setup
+git clone https://github.com/tylerus2020/TurboDiffusion.git
+cd TurboDiffusion
+./scripts/runpod_setup.sh
+
+# Generate video
+./scripts/runpod_quickstart.sh "Your prompt here" output/video.mp4
+```
+
+### Manual Run
+
+```bash
+export PYTHONPATH=$PYTHONPATH:$(pwd)/turbodiffusion
+
+python turbodiffusion/inference/wan2.1_t2v_infer.py \
+    --dit_path checkpoints/TurboWan2.1-T2V-1.3B-480P-quant.pth \
+    --attention_type sla \
+    --quant_linear \
+    --prompt "Your prompt here"
+```
+
+### Notes
+
+- Uses pure PyTorch RoPE fallback when `flash-attn` is unavailable
+- Use `--attention_type sla` to avoid SpargeAttn dependency
+- SLA mode is slightly slower but produces identical results
+- Default attention type is now `sla` (no extra dependencies)
+
+### Troubleshooting
+
+| Error | Solution |
+|-------|----------|
+| `ModuleNotFoundError: imaginaire` | Set `PYTHONPATH` correctly |
+| `TypeError: 'NoneType' object is not callable` | Update to latest code with RoPE fallback |
+| `AssertionError: SageSLA requires SpargeAttn` | Use `--attention_type sla` instead |
+| Unexpected keys in checkpoint | Normal with `strict=False`, can be ignored |
+
+
 ## Evaluation
 
 We evaluate video generation on **a single RTX 5090 GPU**. The E2E Time refers to the end-to-end diffusion generation latency, excluding text encoding and VAE decoding.
